@@ -1,7 +1,7 @@
 import smtplib
 from datetime import datetime
 
-#def patientreminder():
+def patientreminder():
 
 server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
 server.login("comp2140project2021@gmail.com", "softwareengineering")
