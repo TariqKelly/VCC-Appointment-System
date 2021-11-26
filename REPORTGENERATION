@@ -1,166 +1,90 @@
+# IMPORTING MODULE
 from openpyxl.styles import Font, Color
-
 from openpyxl import Workbook
-
 import datetime
+import win32com.client
+
+excel = win32com.client.Dispatch("Excel.Application")
+excel.Visible = False
+
+
+def generateExcelReport():
+    wb = Workbook()
+    sheet = wb.active
+    ft = Font(color="00FF0000", italic=True, bold=True)
+
+    # DUMMY DATA (RAJ PART)
+    patients = [
+        {
+            "id": 12345,
+            "name": "Brittany Walker",
+            "email": "bw@gmail.com",
+            "telephone": 8765663750,
+            "app_date": datetime.datetime(2021, 12, 1),
+            "app_time": "10 a.m",
+        },
+        {
+            "id": 58394,
+            "name": "Anje Walker",
+            "email": "baw@gmail.com",
+            "telephone": 8765678989,
+            "app_date": datetime.datetime(2021, 11, 1),
+            "app_time": "12 p.m",
+        },
+        {
+            "id": 9809,
+            "name": "JHONOITOMLIN",
+            "email": "rgdjgk@gmail.com",
+            "telephone": 8768464324,
+            "app_date": datetime.datetime(2021, 11, 12),
+            "app_time": "12 p.m",
+        },
+        {
+            "id": 98045,
+            "name": "JHONOI TOMLIN",
+            "email": "jdg@gmail.com",
+            "telephone": 87684983,
+            "app_date": datetime.datetime(2021, 12, 10),
+            "app_time": "12 p.m",
+        },
+    ]
+
+    # HEADER CODE
+    sheet["A1"] = "PATIENT ID"
+    sheet["B1"] = "PATIENT NAME"
+    sheet["C1"] = "EMAIL CONTACT"
+    sheet["D1"] = "TELEPHONE CONTACT"
+    sheet["E1"] = "APPOINMENT DATE"
+    sheet["F1"] = "APPOINMENT TIME"
+
+    # SETTING THE WIDTH OF THE COLUMN
+    sheet.column_dimensions["A"].width = 20
+    sheet.column_dimensions["B"].width = 20
+    sheet.column_dimensions["C"].width = 20
+    sheet.column_dimensions["D"].width = 20
+    sheet.column_dimensions["E"].width = 20
+    sheet.column_dimensions["F"].width = 20
+
+    # PLACING PATIENT INFO INTO EXCEL FILE
+    for patient in range(0, len(patients)):
+        sheet["A" + str(patient + 2)] = str(patients[patient]["id"])
+        sheet["B" + str(patient + 2)] = patients[patient]["name"]
+        sheet["C" + str(patient + 2)] = patients[patient]["email"]
+        sheet["D" + str(patient + 2)] = patients[patient]["telephone"]
+        sheet["E" + str(patient + 2)] = patients[patient]["app_date"].strftime("%x")
+        sheet["F" + str(patient + 2)] = patients[patient]["app_time"]
+
+        # MISSED APPOINMENTS CODE (WHEN CURRENT DATE IS GREATER THAN APPOINMENT DATE)
+        if patients[patient]["app_date"] < datetime.datetime.now():
+            sheet["A" + str(patient + 2)].font = ft
+            sheet["B" + str(patient + 2)].font = ft
+            sheet["C" + str(patient + 2)].font = ft
+            sheet["D" + str(patient + 2)].font = ft
+            sheet["E" + str(patient + 2)].font = ft
+            sheet["F" + str(patient + 2)].font = ft
+
+    # SAVING THE FILE
+    wb.save("C:/Users/walke/Documents/sample_file.xlsx")
+    convertToPDF()
 
-
-wb = Workbook()
-
-sheet = wb.active
-
-ft = Font(color="00FF0000", italic=True, bold=True)
-
-
-#DUMMY DATA (RAJ PART)
-
-patients = [
-
-    {
-
-        "id": 12345,
-
-        "name": "Brittany Walker",
-
-        "email": "bw@gmail.com",
-
-        "telephone": 8765663750,
-
-        "app_date": datetime.datetime(2021, 12, 1),
-
-        "app_time": "10 a.m"
-
-    },
-
-    {
-
-        "id": 58394,
-
-        "name": "Anje Walker",
-
-        "email": "baw@gmail.com",
-
-        "telephone": 8765678989,
-
-        "app_date": datetime.datetime(2021, 11, 1),
-
-        "app_time": "12 p.m"
-
-    },
-
-    {
-
-        "id": 9809,
-
-        "name": "Jules Walker",
-
-        "email": "rgdjgk@gmail.com",
-
-        "telephone": 8768464324,
-
-        "app_date": datetime.datetime(2021, 11, 12),
-
-        "app_time": "12 p.m"
-
-    },
-
-    {
-
-        "id": 98045,
-
-        "name": "Sherr Walker",
-
-        "email": "jdg@gmail.com",
-
-        "telephone": 87684983,
-
-        "app_date": datetime.datetime(2021, 12, 10),
-
-        "app_time": "12 p.m"
-
-    },
-
-    {
-
-        "id": 5332,
-
-        "name": "Dudley Walker",
-
-        "email": "bighead@gmail.com",
-
-        "telephone": 87640593,
-
-        "app_date": datetime.datetime(2021, 10, 10),
-
-        "app_time": "12 p.m"
-
-    },
-
-    {
-
-        "id": 5332,
-
-        "name": "Dudley Walker",
-
-        "email": "bighead@gmail.com",
-
-        "telephone": 87640593,
-
-        "app_date": datetime.datetime(2021, 10, 10),
-
-        "app_time": "12 p.m"
-
-    }
-
-]
-#HEADER CODE
-
-sheet['A1'] = 'PATIENT ID'
-
-sheet['B1'] = 'PATIENT NAME'
-
-sheet['C1'] = 'EMAIL CONTACT'
-
-sheet['D1'] = 'TELEPHONE CONTACT'
-
-sheet['E1'] = 'APPOINMENT DATE'
-
-sheet['F1'] = 'APPOINMENT TIME'
-
-
-#PLACING PATIENT INFO INTO EXCEL FILE 
-
-for patient in range(0, len(patients)):
-
-    sheet['A' + str(patient + 2)] = patients[patient]['id']
-
-    sheet['B' + str(patient + 2)] = patients[patient]['name']
-
-    sheet['C' + str(patient + 2)] = patients[patient]['email']
-
-    sheet['D' + str(patient + 2)] = patients[patient]['telephone']
-
-    sheet['E' + str(patient + 2)] = patients[patient]['app_date'].strftime("%x")
-
-    sheet['F' + str(patient + 2)] = patients[patient]['app_time']
-
-
-    #MISSED APPOINMENTS CODE (WHEN CURRENT DATE IS GREATER THAN APPOINMENT DATE)
-
-    if patients[patient]['app_date'] < datetime.datetime.now():
-
-        sheet['A' + str(patient + 2)].font = ft
-
-        sheet['B' + str(patient + 2)].font = ft
-
-        sheet['C' + str(patient + 2)].font = ft
-
-        sheet['D' + str(patient + 2)].font = ft
-
-        sheet['E' + str(patient + 2)].font = ft
-
-        sheet['F' + str(patient + 2)].font = ft
-
-
-wb.save("C:/Users/walke/Documents/sample_file.xlsx")
 
