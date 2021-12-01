@@ -1,9 +1,14 @@
 from tkinter import *
 import sqlite3
-from tkinter import ttk
+from tkinter import ttk, messagebox
+import re
 
 with sqlite3.connect("database.db") as db:
     cursor = db.cursor()
+
+# Allowed Characters for Name and Email Fields
+regexEmail = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+regexName = r'^[a-zA-Z- ]+( [a-zA-Z -]+)*$'
 
 #Create Database Table for Authorized Users
 # Variables: id, user_fullname, user_email, login_id, password, secret_question, secret_answer
@@ -23,10 +28,16 @@ def add_new_user():
 
     cursor.execute("SELECT COUNT(*) from user_data WHERE login_id='" + newLoginID + "' ")
     result = cursor.fetchone()
-    if int(result[0]) > 0:
-        error["text"] = "Error: This Username Already Exists."
+    if user_fullname.get() == "" or user_email.get() == "" or login_id.get() == "" or password.get() == ""or secret_answer.get() == "":
+        messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+    elif not (re.fullmatch(regexEmail, user_email.get())):
+        messagebox.showwarning("Invalid Email", "Invalid Email Address")
+    elif not (re.fullmatch(regexName, user_fullname.get())):
+        messagebox.showwarning("Invalid Name", "Name cannot include special characters or numbers.")
+    elif int(result[0]) > 0:
+        messagebox.showwarning("Username Exists", "Error: This Username Already Exists.")
     else:
-        error["text"] = "New Authorized User Created Successfully."
+        messagebox.showinfo("Success", "New Authorized User Created Successfully.")
         cursor.execute("INSERT INTO user_data(user_fullname, user_email, login_id, password, secret_question, "
                        "secret_answer)VALUES(?,?,?,?,?,?)",(newUserfullname, newUseremail, newLoginID, newPassword,
                                                             newSecretQues,newSecretAns))
@@ -99,7 +110,7 @@ secret_question.grid(row=5,column=1)
 
 
 #Enter Secret Answer secret_answer
-secretAnsLabel = Label(text="Enter Unique Username:",font='Helvetica 14 bold')
+secretAnsLabel = Label(text="Enter Answer:",font='Helvetica 14 bold')
 secretAnsLabel.grid(row = 6, column = 0, padx=10, pady=10)
 #
 secret_answer = Entry(text="")

@@ -1,32 +1,22 @@
 from tkinter import *
 from tkinter import ttk, messagebox
+import re
 
 import sqlite3
 
 with sqlite3.connect("database.db") as db:
     cursor = db.cursor()
 
-# patient_id
-# first_name
-# last_name
-# tel_num
-# email_address
+# Allowed Characters for Name and Email Fields
+regexEmail = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+regexName = r'^[a-zA-Z- ]+( [a-zA-Z -]+)*$'
+
 
 # Create Database Table for Patients
 cursor.execute("""CREATE TABLE IF NOT EXISTS patients(patient_id integer PRIMARY KEY AUTOINCREMENT, first_name text 
 NOT NULL, last_name text NOT NULL, tel_num text NOT NULL, email_address text NOT NULL); """)
 
 ###################### MAIN FUNCTIONS ###########################
-
-
-# Update Patient - Window
-"""
-def update_patient_window():
-    update_patient_window = Toplevel(add_patient_window)
-    update_patient_window.title("VCC Appointments - Update Patient Record ")
-    canvas = Canvas(update_patient_window, height = HEIGHT, width = WIDTH)
-    canvas.pack()
-"""
 
 
 # Add New Patient
@@ -80,10 +70,16 @@ def add_new_patient():
         cursor.execute(
             "SELECT COUNT(*) from patients WHERE email_address='" + newEmailAddress + "' OR tel_num='" + newTelNum + "' ")
         result = cursor.fetchone()
-        if int(result[0]) > 0:
+        if first_name.get() == "" or last_name.get() == "" or tel_num.get() == "" or email_address.get() == "":
+            messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+        elif not (re.fullmatch(regexEmail, email_address.get())):
+            messagebox.showwarning("Invalid Email", "Invalid Email Address")
+        elif not (re.fullmatch(regexName, first_name.get())) or not (re.fullmatch(regexName, last_name.get())):
+            messagebox.showwarning("Invalid Name", "Name cannot include special characters or numbers.")
+        elif int(result[0]) > 0:
             success["text"] = "Sorry, this user has already been registered."
         else:
-            success["text"] = "New Patient Created Successfully."
+            success["text"] = "New Patient Record Created Successfully."
             cursor.execute("INSERT INTO patients(first_name,last_name,tel_num,email_address)VALUES(?,?,?,?)",
                            (newFirstName, newLastName, newTelNum, newEmailAddress))
         db.commit()
@@ -119,16 +115,21 @@ def display_patient():
     # Function To Perform Search
     def search_db():
         input = search_email.get()
-
-        # Execute SQL
-        sql = "SELECT * FROM patients WHERE email_address LIKE ?"
-        res = cursor.execute(sql, (input,))
-        for row in res:
-            patient_id1 = row[0]
-            first_name1 = row[1]
-            last_name1 = row[2]
-            tel_num1 = row[3]
-            email_address1 = row[4]
+        cursor.execute(
+            "SELECT COUNT(*) from patients WHERE email_address='" + input + "' ")
+        result = cursor.fetchone()
+        if int(result[0]) == 0:
+            messagebox.showwarning("Patient Not Found", "Patient Not Found. Please try again.")
+            search_email.delete(0, END)
+        else:
+            sql = "SELECT * FROM patients WHERE email_address LIKE ?"
+            res = cursor.execute(sql, (input,))
+            for row in res:
+                patient_id1 = row[0]
+                first_name1 = row[1]
+                last_name1 = row[2]
+                tel_num1 = row[3]
+                email_address1 = row[4]
 
         # Creating the Display Data
 
@@ -194,15 +195,20 @@ def update_patient():
     # Function To Perform Search
     def search_db():
         input = search_email.get()
-
-        # Execute SQL
-        sql = "SELECT * FROM patients WHERE email_address LIKE ?"
-        res = cursor.execute(sql, (input,))
-        for row in res:
-            first_name1 = row[1]
-            last_name1 = row[2]
-            tel_num1 = row[3]
-            email_address1 = row[4]
+        cursor.execute(
+            "SELECT COUNT(*) from patients WHERE email_address='" + input + "' ")
+        result = cursor.fetchone()
+        if int(result[0]) == 0:
+            messagebox.showwarning("Patient Not Found", "Patient Not Found. Please try again.")
+            search_email.delete(0, END)
+        else:
+            sql = "SELECT * FROM patients WHERE email_address LIKE ?"
+            res = cursor.execute(sql, (input,))
+            for row in res:
+                first_name1 = row[1]
+                last_name1 = row[2]
+                tel_num1 = row[3]
+                email_address1 = row[4]
 
         # Creating the Update Fields
 
@@ -280,19 +286,25 @@ def delete_patient():
     search_email.grid(row=1, column=1, padx=10, pady=10)
 
     # Function To Perform Search
+
     def search_db():
 
         input = search_email.get()
-
-        # Execute SQL
-        sql = "SELECT * FROM patients WHERE email_address LIKE ?"
-        res = cursor.execute(sql, (input,))
-        for row in res:
-            patient_id1 = row[0]
-            first_name1 = row[1]
-            last_name1 = row[2]
-            tel_num1 = row[3]
-            email_address1 = row[4]
+        cursor.execute(
+            "SELECT COUNT(*) from patients WHERE email_address='" + input + "' ")
+        result = cursor.fetchone()
+        if int(result[0]) == 0:
+            messagebox.showwarning("Patient Not Found", "Patient Not Found. Please try again.")
+            search_email.delete(0, END)
+        else:
+            sql = "SELECT * FROM patients WHERE email_address LIKE ?"
+            res = cursor.execute(sql, (input,))
+            for row in res:
+                patient_id1 = row[0]
+                first_name1 = row[1]
+                last_name1 = row[2]
+                tel_num1 = row[3]
+                email_address1 = row[4]
 
         # Creating the Display Data
 
@@ -363,7 +375,7 @@ y = (screen_height / 2) - (app_height / 2)
 manage_db_window.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
 
 # Insert Company Logo
-img = PhotoImage(file="images/Logo.png")
+img = PhotoImage(file="images/VCC-Logo.png")
 label = Label(manage_db_window, image=img)
 label.grid(row=0, columnspan=2)
 

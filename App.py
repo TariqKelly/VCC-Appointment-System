@@ -9,27 +9,33 @@ with sqlite3.connect("database.db") as db:
 
 #Run the User Validation Function
 def sign_up():
-    os.system("python3 SignUp.py")
+    if sys.platform.startswith('darwin'):
+        os.system("python3 SignUp.py")
+    else:
+        os.system("python SignUp.py")
 
 #Run the Patient Management Function
 def manage_patients():
-    os.system("python3 DatabaseManagement.py")
+    if sys.platform.startswith('darwin'):
+        os.system("python3 DatabaseManagement.py")
+    else:
+        os.system("python DatabaseManagement.py")
 
 #Run the Appointment Management Function
 def manage_appointments():
-    os.system("python3 AppointmentScheduler.py")
+    if sys.platform.startswith('darwin'):
+        os.system("python3 AppointmentScheduler.py")
+    else:
+        os.system("python AppointmentScheduler.py")
 
-#Run the Patient Reminder Function
-def remind_patients():
-    os.system("python3 PatientReminder.py")
 
-#Run the Staff Reminder Function
-def remind_staff():
-    os.system("python3 StaffNotifier.py")
 
 #Run the Report Generation Function
 def generate_report():
-    os.system("python3 ReportGeneration.py")
+    if sys.platform.startswith('darwin'):
+        os.system("python3 ReportGeneration.py")
+    else:
+        os.system("python ReportGeneration.py")
 
 # Validate Login
 def validate_login():
@@ -49,14 +55,14 @@ def reset_pass():
     resetWindow = Toplevel()
     resetWindow.title("Reset Password")
 
-    id_label = Label(resetWindow, text="Login ID*", font='Helvetica 14 bold')
+    id_label = Label(resetWindow, text="Login ID:", font='Helvetica 14 bold')
     id_label.grid(row = 1, column = 0, padx=10, pady=10)
     #
     id_label_ent = Entry(resetWindow, width=20)
     id_label_ent.grid(row = 1, column = 1, padx=10, pady=10)
 
     #Secret Question
-    ques_label = Label(resetWindow, text="Secret Question", font='Helvetica 14 bold')
+    ques_label = Label(resetWindow, text="Secret Question:", font='Helvetica 14 bold')
     ques_label.grid(row = 2, column = 0, padx=10, pady=10)
 
     # List of questions
@@ -95,6 +101,7 @@ def reset_pass():
     new_pass_ent = Entry(resetWindow, width=20, show='•')
     new_pass_ent.grid(row = 4, column = 1, padx=10, pady=10)
 
+
     def subAnswerSecretQues():
             currentID = id_label_ent.get()
             ans = answer_ent.get()
@@ -103,10 +110,12 @@ def reset_pass():
             # add sql query here:
             cursor.execute("SELECT COUNT(*) from user_data WHERE login_id='" + currentID + "' AND secret_answer='" + ans + "' ")
             result = cursor.fetchone()
-            if int(result[0]) == 0:
-                reset_attempt_message["text"] = "Incorrect Credentials: Please Try Again"
+            if id_label_ent.get() == "" or answer_ent.get() == "" or new_pass_ent.get() == "":
+                messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+            elif int(result[0]) == 0:
+                messagebox.showwarning("Incorrect Credentials", "Incorrect Credentials: Please Try Again")
             else:
-                reset_attempt_message["text"] = "Password Successfully Updated!"
+                messagebox.showinfo("Success", "Password Successfully Updated!")
                 cursor.execute("UPDATE user_data SET password=? where login_id=?",(newPass, currentID, ))
                 db.commit()
             # button to submit the answers

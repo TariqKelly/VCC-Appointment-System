@@ -1,16 +1,21 @@
+from datetime import date
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 import sqlite3
 from tkinter import colorchooser
 from configparser import ConfigParser
+from tkinter.ttk import Notebook
+import re
+
 from reportlab.platypus import SimpleDocTemplate,Paragraph,Table,TableStyle
 from reportlab.lib import colors
+from tkcalendar import DateEntry
 
-pdf = SimpleDocTemplate("samplereport.pdf")
-flow_obj = []
-td = [["Patient ID","First Name","Last Name","Phone Number","Email Address"]]
 
+# Allowed Characters for Name and Email Fields
+regexEmail = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+regexName = r'^[a-zA-Z- ]+( [a-zA-Z -]+)*$'
 
 
 def generate_pdf():
@@ -35,11 +40,47 @@ def generate_pdf():
     flow_obj.append(table)
     pdf.build(flow_obj)
 
+def generate_ap_pdf():
+    pdf = SimpleDocTemplate("sample_app_report.pdf")
+    flow_obj = []
+    td = [["Appt ID", "Date", "Time", "Status", "Patient ID", "First Name", "Last Name", "Email Address", "Phone Number"]]
 
-root = Tk()
-root.title('Generate Reports')
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+
+    c.execute("SELECT appointments.appt_id, appointments.appt_date, appointments.appt_time, appointments.appt_status, "
+              "patients.patient_id, patients.first_name, patients.last_name, patients.email_address, patients.tel_num "
+              "FROM appointments INNER JOIN patients ON appointments.patient_id=patients.patient_id")
+    records = c.fetchall()
+    fulldata = []
+    for row in records:
+        data = [row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]]
+        td.append(data)
+        fulldata.append(data)
+        ts = TableStyle([("GRID", (0, 0), (-1, -1), 1, colors.black)])
+        for i, row in enumerate(fulldata):
+            if row[3] == "Missed":
+                ts.add('TEXTCOLOR', (0,i+1), (-1,i+1), colors.red)
+        print(row)
+        print(row[3])
+    print(list(enumerate(fulldata)))
+
+
+    table = Table(td)
+
+    table.setStyle(ts)
+    flow_obj.append(table)
+    pdf.build(flow_obj)
+
+masterwindow = Tk()
+masterwindow.title('Generate Reports')
 #root.iconbitmap('')
-root.geometry("1000x550")
+masterwindow.geometry("1000x550")
+
+
 
 # Read our config file and get colors
 parser = ConfigParser()
@@ -74,12 +115,14 @@ def query_database():
         if count % 2 == 0:
             my_tree.insert(parent='', index='end', iid=count, text='',
                            values=(record[1], record[2], record[3], record[4], record[5]),
+
                            tags=('evenrow',))
         else:
             my_tree.insert(parent='', index='end', iid=count, text='',
-                           values=(record[1], record[2], record[3], record[4], record[5]),
+                           values=(record[1],record[2], record[3], record[4], record[5]),
                            tags=('oddrow',))
         # increment counter
+        print(record)
         count += 1
 
     # Commit changes
@@ -87,7 +130,48 @@ def query_database():
 
     # Close our connection
     conn.close()
+def query_ap_database():
+    # Clear the Treeview
+    for record in my_ap_tree.get_children():
+        my_ap_tree.delete(record)
 
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+
+    c.execute("SELECT appointments.appt_id, appointments.appt_date, appointments.appt_time, appointments.appt_status, "
+              "patients.patient_id, patients.first_name, patients.last_name, patients.email_address, patients.tel_num "
+              "FROM appointments INNER JOIN patients ON appointments.patient_id=patients.patient_id")
+    records = c.fetchall()
+
+    # Add our data to the screen
+    global count
+    count = 0
+
+    # for record in records:
+    #	print(record)
+
+    for record in records:
+        if count % 2 == 0:
+            my_ap_tree.insert(parent='', index='end', iid=count, text='',
+                           values=(record[0], record[1], record[2], record[3], record[4], record[5],record[6], record[7], record[8]),
+
+                           tags=('evenrow',))
+        else:
+            my_ap_tree.insert(parent='', index='end', iid=count, text='',
+                           values=(record[0], record[1], record[2], record[3], record[4], record[5],record[6], record[7], record[8]),
+                           tags=('oddrow',))
+        # increment counter
+        print(record)
+        count += 1
+
+    # Commit changes
+    conn.commit()
+
+    # Close our connection
+    conn.close()
 
 def search_records():
     lookup_record = search_entry.get()
@@ -117,11 +201,11 @@ def search_records():
     for record in records:
         if count % 2 == 0:
             my_tree.insert(parent='', index='end', iid=count, text='',
-                           values=(record[1], record[2], record[3], record[4], record[5]),
+                           values=(record[1], record[2], record[3], record[4]),
                            tags=('evenrow',))
         else:
             my_tree.insert(parent='', index='end', iid=count, text='',
-                           values=(record[1], record[2], record[3], record[4], record[5]),
+                           values=(record[1], record[2], record[3], record[4]),
                            tags=('oddrow',))
         # increment counter
         count += 1
@@ -136,7 +220,7 @@ def search_records():
 def lookup_records():
     global search_entry, search
 
-    search = Toplevel(root)
+    search = Toplevel(masterwindow)
     search.title("Lookup Records")
     search.geometry("400x200")
     #search.iconbitmap('')
@@ -229,8 +313,8 @@ def reset_colors():
 
 
 # Add Menu
-my_menu = Menu(root)
-root.config(menu=my_menu)
+my_menu = Menu(masterwindow)
+masterwindow.config(menu=my_menu)
 
 # Configure our menu
 option_menu = Menu(my_menu, tearoff=0)
@@ -242,7 +326,7 @@ option_menu.add_command(label="Highlight Color", command=highlight_color)
 option_menu.add_separator()
 option_menu.add_command(label="Reset Colors", command=reset_colors)
 option_menu.add_separator()
-option_menu.add_command(label="Exit", command=root.quit)
+option_menu.add_command(label="Exit", command=masterwindow.quit)
 
 # Search Menu
 search_menu = Menu(my_menu, tearoff=0)
@@ -252,72 +336,11 @@ search_menu.add_command(label="Search", command=lookup_records)
 search_menu.add_separator()
 search_menu.add_command(label="Reset", command=query_database)
 
-# Add Fake Data
-'''
-data = [
-	["John", "Elder", 1, "123 Elder St.", "Las Vegas", "NV", "89137"],
-	["Mary", "Smith", 2, "435 West Lookout", "Chicago", "IL", "60610"],
-	["Tim", "Tanaka", 3, "246 Main St.", "New York", "NY", "12345"],
-	["Erin", "Erinton", 4, "333 Top Way.", "Los Angeles", "CA", "90210"],
-	["Bob", "Bobberly", 5, "876 Left St.", "Memphis", "TN", "34321"],
-	["Steve", "Smith", 6, "1234 Main St.", "Miami", "FL", "12321"],
-	["Tina", "Browne", 7, "654 Street Ave.", "Chicago", "IL", "60611"],
-	["Mark", "Lane", 8, "12 East St.", "Nashville", "TN", "54345"],
-	["John", "Smith", 9, "678 North Ave.", "St. Louis", "MO", "67821"],
-	["Mary", "Todd", 10, "9 Elder Way.", "Dallas", "TX", "88948"],
-	["John", "Lincoln", 11, "123 Elder St.", "Las Vegas", "NV", "89137"],
-	["Mary", "Bush", 12, "435 West Lookout", "Chicago", "IL", "60610"],
-	["Tim", "Reagan", 13, "246 Main St.", "New York", "NY", "12345"],
-	["Erin", "Smith", 14, "333 Top Way.", "Los Angeles", "CA", "90210"],
-	["Bob", "Field", 15, "876 Left St.", "Memphis", "TN", "34321"],
-	["Steve", "Target", 16, "1234 Main St.", "Miami", "FL", "12321"],
-	["Tina", "Walton", 17, "654 Street Ave.", "Chicago", "IL", "60611"],
-	["Mark", "Erendale", 18, "12 East St.", "Nashville", "TN", "54345"],
-	["John", "Nowerton", 19, "678 North Ave.", "St. Louis", "MO", "67821"],
-	["Mary", "Hornblower", 20, "9 Elder Way.", "Dallas", "TX", "88948"]
-
-]
-'''
-
-# Do some database stuff
 # Create a database or connect to one that exists
 conn = sqlite3.connect('database.db')
 
 # Create a cursor instance
 c = conn.cursor()
-
-# Create Table
-'''
-c.execute("""CREATE TABLE if not exists customers (
-	first_name text,
-	last_name text,
-	id integer,
-	address text,
-	city text,
-	state text,
-	zipcode text)
-	""")
-# Add dummy data to table
-
-for record in data:
-	c.execute("INSERT INTO customers VALUES (:first_name, :last_name, :id, :address, :city, :state, :zipcode)", 
-		{
-		'first_name': record[0],
-		'last_name': record[1],
-		'id': record[2],
-		'address': record[3],
-		'city': record[4],
-		'state': record[5],
-		'zipcode': record[6]
-		}
-		)
-'''
-
-# Commit changes
-#conn.commit()
-
-# Close our connection
-#conn.close()
 
 # Add Some Style
 style = ttk.Style()
@@ -336,16 +359,23 @@ style.configure("Treeview",
 style.map('Treeview',
           background=[('selected', saved_highlight_color)])
 
-# Create a Treeview Frame
-tree_frame = Frame(root)
-tree_frame.pack(pady=10)
-
+Tabs = Notebook(masterwindow)
+Tabs.pack()
+patient_frame = Frame(Tabs,padx=20,pady=20)
+appointment_frame = Frame(Tabs,padx=20,pady=20)
+patient_tree_frame = Frame(patient_frame)
+appointment_tree_frame = Frame(appointment_frame)
+patient_tree_frame.pack()
+appointment_tree_frame.pack()
+Tabs.add(patient_frame, text ='Patients')
+Tabs.add(appointment_frame, text ='Appointments')
+#-----------------------------------------------------------------------------------------------------------------------------
 # Create a Treeview Scrollbar
-tree_scroll = Scrollbar(tree_frame)
+tree_scroll = Scrollbar(patient_tree_frame)
 tree_scroll.pack(side=RIGHT, fill=Y)
 
 # Create The Treeview
-my_tree = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended")
+my_tree = ttk.Treeview(patient_tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended")
 my_tree.pack()
 
 # Configure the Scrollbar
@@ -356,11 +386,11 @@ my_tree['columns'] = ("Patient ID","First Name", "Last Name", "Telephone Number"
 
 # Format Our Columns
 my_tree.column("#0", width=0, stretch=NO)
-my_tree.column("Patient ID", anchor=W, width=140)
+my_tree.column("Patient ID", anchor=W, width=60)
 my_tree.column("First Name", anchor=W, width=140)
 my_tree.column("Last Name", anchor=W, width=100)
 my_tree.column("Telephone Number", anchor=W, width=140)
-my_tree.column("Email Address", anchor=W, width=140)
+my_tree.column("Email Address", anchor=W, width=200)
 
 # Create Headings
 my_tree.heading("#0", text="", anchor=W)
@@ -375,7 +405,7 @@ my_tree.tag_configure('oddrow', background=saved_secondary_color)
 my_tree.tag_configure('evenrow', background=saved_primary_color)
 
 # Add Record Entry Boxes
-data_frame = LabelFrame(root, text="Record")
+data_frame = LabelFrame(patient_frame, text="Record")
 data_frame.pack(fill="x", expand="yes", padx=20)
 
 fn_label = Label(data_frame, text="First Name:")
@@ -398,19 +428,6 @@ email_label.grid(row=1, column=2, padx=10, pady=10)
 email_entry = Entry(data_frame)
 email_entry.grid(row=1, column=3, padx=10, pady=10)
 
-# Move Row Up
-def up():
-    rows = my_tree.selection()
-    for row in rows:
-        my_tree.move(row, my_tree.parent(row), my_tree.index(row) - 1)
-
-
-# Move Rown Down
-def down():
-    rows = my_tree.selection()
-    for row in reversed(rows):
-        my_tree.move(row, my_tree.parent(row), my_tree.index(row) + 1)
-
 
 # Remove one record
 def remove_one():
@@ -424,10 +441,11 @@ def remove_one():
     c = conn.cursor()
 
     # Delete From Database
-    c.execute("DELETE from patients WHERE email_address=" + email_entry.get())
+    if messagebox.askokcancel("Confirm","Are You Sure You Want To Delete This Record?"):
+        c.execute("DELETE from patients WHERE email_address='" + email_entry.get() + "'")
 
-    # Commit changes
-    conn.commit()
+        # Commit changes
+        conn.commit()
 
     # Close our connection
     conn.close()
@@ -442,7 +460,7 @@ def remove_one():
 # Remove Many records
 def remove_many():
     # Add a little message box for fun
-    response = messagebox.askyesno("WOAH!!!!", "This Will Delete EVERYTHING SELECTED From The Table\nAre You Sure?!")
+    response = messagebox.askyesno("Warning", "This Will Delete EVERYTHING SELECTED From The Table\nAre You Sure?!")
 
     # Add logic for message box
     if response == 1:
@@ -454,7 +472,7 @@ def remove_many():
 
         # Add selections to ids_to_delete list
         for record in x:
-            ids_to_delete.append(my_tree.item(record, 'values')[2])
+            ids_to_delete.append(my_tree.item(record, 'values')[0])
 
         # Delete From Treeview
         for record in x:
@@ -482,39 +500,6 @@ def remove_many():
         clear_entries()
 
 
-# Remove all records
-def remove_all():
-    # Add a little message box for fun
-    response = messagebox.askyesno("WOAH!!!!", "This Will Delete EVERYTHING From The Table\nAre You Sure?!")
-
-    # Add logic for message box
-    if response == 1:
-        # Clear the Treeview
-        for record in my_tree.get_children():
-            my_tree.delete(record)
-
-        # Create a database or connect to one that exists
-        conn = sqlite3.connect('database.db')
-
-        # Create a cursor instance
-        c = conn.cursor()
-
-        # Delete Everything From The Table
-        c.execute("DROP TABLE patients")
-
-        # Commit changes
-        conn.commit()
-
-        # Close our connection
-        conn.close()
-
-        # Clear entry boxes if filled
-        clear_entries()
-
-        # Recreate The Table
-        create_table_again()
-
-
 # Clear entry boxes
 def clear_entries():
     # Clear entry boxes
@@ -538,41 +523,42 @@ def select_record(e):
     values = my_tree.item(selected, 'values')
 
     # outputs to entry boxes
+
     fn_entry.insert(0, values[1])
     ln_entry.insert(0, values[2])
     phone_entry.insert(0, values[3])
     email_entry.insert(0, values[4])
+    print(values)
 
 
 # Update record
 def update_record():
-    # Grab the record number
-    selected = my_tree.focus()
-    # Update record
-    my_tree.item(selected, text="", values=(fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get(),))
-
-    # Update the database
     # Create a database or connect to one that exists
     conn = sqlite3.connect('database.db')
 
     # Create a cursor instance
     c = conn.cursor()
+    def getPatID():
+        c.execute("SELECT patient_id from patients WHERE email_address='" + email_entry.get() + "'")
+        patID = c.fetchone()[0]
+        return patID
 
-    c.execute("""UPDATE patients SET
-		first_name = :first,
-		last_name = :last,
-		tel_num = :tel,
-		email_address = :email,
-		WHERE email_address = :email""",
-              {
-                  'first': fn_entry.get(),
-                  'last': ln_entry.get(),
-                  'tel': phone_entry.get(),
-                  'email': email_entry.get(),
-              })
+    # Grab the record number
+    selected = my_tree.focus()
+    # Update record
+
+    my_tree.item(selected, text="", values=(getPatID(), fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get(),))
+
+    # Update the database
+
+    query = "UPDATE patients SET first_name=?, last_name=?, tel_num=?, email_address=? WHERE email_address=?"
+    c.execute(query, (fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get(), email_entry.get(),))
+
+
 
     # Commit changes
     conn.commit()
+    messagebox.showinfo("Success","Patient Updated!")
 
     # Close our connection
     conn.close()
@@ -586,19 +572,29 @@ def update_record():
 
 # add new record to database
 def add_record():
-    # Update the database
     # Create a database or connect to one that exists
     conn = sqlite3.connect('database.db')
 
     # Create a cursor instance
     c = conn.cursor()
+    c.execute(
+        "SELECT COUNT(*) from patients WHERE email_address='" + email_entry.get() + "' OR tel_num='" + phone_entry.get() + "' ")
+    result = c.fetchone()
+    if fn_entry.get() == "" or ln_entry.get() == "" or phone_entry.get() == "" or email_entry.get() == "":
+        messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+    elif not (re.fullmatch(regexEmail, email_entry.get())):
+        messagebox.showwarning("Invalid Email", "Invalid Email Address")
+    elif not (re.fullmatch(regexName, fn_entry.get())) or not (re.fullmatch(regexName, ln_entry.get())):
+        messagebox.showwarning("Invalid Name", "Name cannot include special characters or numbers.")
+    elif int(result[0]) > 0:
+        messagebox.showwarning("Invalid", "This Patient Has Already Been Added")
+    else:
+        messagebox.showinfo("Success", "Patient Successfully Added!")
+        c.execute("INSERT INTO patients(first_name,last_name,tel_num,email_address)VALUES(?,?,?,?)",
+                  (fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get()))
 
-    # Add New Record
-    c.execute("INSERT INTO patients(first_name,last_name,tel_num,email_address)VALUES(?,?,?,?)",
-                           (fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get()))
-
-    # Commit changes
-    conn.commit()
+        # Commit changes
+        conn.commit()
 
     # Close our connection
     conn.close()
@@ -635,29 +631,20 @@ NOT NULL, last_name text NOT NULL, tel_num text NOT NULL, email_address text NOT
 
 
 # Add Buttons
-button_frame = LabelFrame(root, text="Commands")
+button_frame = LabelFrame(patient_frame, text="Commands")
 button_frame.pack(fill="x", expand="yes", padx=20)
 
 update_button = Button(button_frame, text="Update Record", command=update_record)
-update_button.grid(row=0, column=0, padx=10, pady=10)
+update_button.grid(row=0, column=1, padx=10, pady=10)
 
 add_button = Button(button_frame, text="Add Record", command=add_record)
-add_button.grid(row=0, column=1, padx=10, pady=10)
-
-remove_all_button = Button(button_frame, text="Remove All Records", command=remove_all)
-remove_all_button.grid(row=0, column=2, padx=10, pady=10)
+add_button.grid(row=0, column=0, padx=10, pady=10)
 
 remove_one_button = Button(button_frame, text="Remove One Selected", command=remove_one)
 remove_one_button.grid(row=0, column=3, padx=10, pady=10)
 
 remove_many_button = Button(button_frame, text="Remove Many Selected", command=remove_many)
 remove_many_button.grid(row=0, column=4, padx=10, pady=10)
-
-move_up_button = Button(button_frame, text="Move Up", command=up)
-move_up_button.grid(row=0, column=5, padx=10, pady=10)
-
-move_down_button = Button(button_frame, text="Move Down", command=down)
-move_down_button.grid(row=0, column=6, padx=10, pady=10)
 
 select_record_button = Button(button_frame, text="Generate PDF", command=generate_pdf)
 select_record_button.grid(row=0, column=7, padx=10, pady=10)
@@ -667,5 +654,324 @@ my_tree.bind("<ButtonRelease-1>", select_record)
 
 # Run to pull data from database on start
 query_database()
+#----------------------------------------------------------------------------------------------------------
 
-root.mainloop()
+#-----------------------------------------------------------------------------------------------------------------------------
+# Create a Treeview Scrollbar
+ap_tree_scroll = Scrollbar(appointment_tree_frame)
+ap_tree_scroll.pack(side=RIGHT, fill=Y)
+
+# Create The Treeview
+my_ap_tree = ttk.Treeview(appointment_tree_frame, yscrollcommand=ap_tree_scroll.set, selectmode="extended")
+my_ap_tree.pack()
+
+# Configure the Scrollbar
+ap_tree_scroll.config(command=my_ap_tree.yview)
+
+# Define Our Columns
+my_ap_tree['columns'] = ("Appt ID","Date", "Time", "Status", "Patient ID", "First Name", "Last Name","Email", "Phone")
+
+# Format Our Columns
+my_ap_tree.column("#0", width=0, stretch=NO)
+my_ap_tree.column("Appt ID", anchor=W, width=60)
+my_ap_tree.column("Date", anchor=W, width=90)
+my_ap_tree.column("Time", anchor=W, width=90)
+my_ap_tree.column("Status", anchor=W, width=90)
+my_ap_tree.column("Patient ID", anchor=W, width=60)
+my_ap_tree.column("First Name", anchor=W, width=100)
+my_ap_tree.column("Last Name", anchor=W, width=100)
+my_ap_tree.column("Email", anchor=W, width=200)
+my_ap_tree.column("Phone", anchor=W, width=200)
+
+# Create Headings
+my_ap_tree.heading("#0", text="", anchor=W)
+my_ap_tree.heading("Appt ID", text="Appt ID", anchor=W)
+my_ap_tree.heading("Date", text="Date", anchor=W)
+my_ap_tree.heading("Time", text="Time", anchor=W)
+my_ap_tree.heading("Status", text="Status", anchor=W)
+my_ap_tree.heading("Patient ID", text="Patient ID", anchor=W)
+my_ap_tree.heading("First Name", text="First Name", anchor=W)
+my_ap_tree.heading("Last Name", text="Last Name", anchor=W)
+my_ap_tree.heading("Email", text="Email", anchor=W)
+my_ap_tree.heading("Phone", text="Phone", anchor=W)
+
+
+# Create Striped Row Tags
+my_ap_tree.tag_configure('oddrow', background=saved_secondary_color)
+my_ap_tree.tag_configure('evenrow', background=saved_primary_color)
+
+# Add Record Entry Boxes
+data_ap_frame = LabelFrame(appointment_frame, text="Record")
+data_ap_frame.pack(fill="x", expand="yes", padx=20)
+
+date_label = Label(data_ap_frame, text="Date:")
+date_label.grid(row=0, column=0, padx=10, pady=10)
+date_entry = DateEntry(data_ap_frame, width=12, background='white', foreground='darkblue',
+                                      borderwidth=2, mindate=date.today())
+date_entry.grid(row=0, column=1, padx=10, pady=10)
+
+# Time Entry-----------------------------------------------------------------------
+timeOptions = ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",
+                               "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM"]
+
+time_label = Label(data_ap_frame, text="Time:")
+time_label.grid(row=0, column=2, padx=10, pady=10)
+
+def callbackFunc(event):
+    time_entry = event.widget.get()
+    print(time_entry)
+
+time_entry = ttk.Combobox(data_ap_frame, value=timeOptions, width=25)
+time_entry.bind("<<ComboboxSelected>>", callbackFunc)
+time_entry.grid(row=0, column=3, padx=10, pady=10)
+#----------------------------------------------------------------------------------
+#Status Entry
+statusOptions = ["Upcoming", "Completed","Missed"]
+
+status_label = Label(data_ap_frame, text="Status:")
+status_label.grid(row=0, column=4, padx=10, pady=10)
+
+
+def callbackFunc(event):
+    status_entry = event.widget.get()
+    print(status_entry)
+
+status_entry = ttk.Combobox(data_ap_frame, value=statusOptions)
+status_entry.bind("<<ComboboxSelected>>", callbackFunc)
+status_entry.grid(row=0, column=5, padx=10, pady=10)
+
+
+
+# Remove one record
+def remove_one():
+    x = my_ap_tree.selection()[0]
+    my_ap_tree.delete(x)
+
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+
+    # Delete From Database
+    if messagebox.askokcancel("Confirm","Are You Sure You Want To Delete This Record?"):
+        c.execute("DELETE from appointments WHERE appt_date='" + date_entry.get() + "' AND appt_time='" + time_entry.get() + "'")
+
+        # Commit changes
+        conn.commit()
+
+    # Close our connection
+    conn.close()
+
+    # Clear The Entry Boxes
+    clear_entries()
+
+    # Add a little message box for fun
+    messagebox.showinfo("Deleted!", "Your Record Has Been Deleted!")
+
+# Clear entry boxes
+def clear_entries():
+    # Clear entry boxes
+    date_entry.delete(0, END)
+    time_entry.delete(0, END)
+    status_entry.delete(0, END)
+
+'''
+# Update record
+def update_record():
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+
+    sql = "SELECT * FROM appointments"
+    res = c.execute(sql)
+    for row in res:
+        appt_id1 = row[0]
+        appt_date1 = row[1]
+        appt_time1 = row[2]
+    # Create a cursor instance
+
+    def getapptID():
+        c.execute("SELECT appt_id from appointments WHERE appt_date='" + appt_date1 + "' AND appt_time='" + appt_time1 + "'")
+        apptID = c.fetchone()[0]
+        print(apptID)
+        return apptID
+
+    # Grab the record number
+    selected = my_ap_tree.focus()
+    # Update record
+
+    my_ap_tree.item(selected, text="", values=(getapptID(), date_entry.get(), time_entry.get(), status_entry.get(),patient_id))
+
+    # Update the database
+
+    query = "UPDATE appointments SET appt_date=?, appt_time=?, appt_status=? WHERE appt_id=?"
+    c.execute(query, (date_entry.get(), time_entry.get(), status_entry.get(),getapptID()))
+
+
+
+    # Commit changes
+    conn.commit()
+    messagebox.showinfo("Success","Appointment Updated!")
+
+    # Close our connection
+    conn.close()
+
+    # Clear entry boxes
+    date_entry.delete(0, END)
+    time_entry.delete(0, END)
+    status_entry.delete(0, END)
+
+
+
+# Remove Many records
+def remove_many():
+    # Add a little message box for fun
+    response = messagebox.askyesno("Warning", "This Will Delete EVERYTHING SELECTED From The Table\nAre You Sure?!")
+
+    # Add logic for message box
+    if response == 1:
+        # Designate selections
+        x = my_ap_tree.selection()
+
+        # Create List of ID's
+        ids_to_delete = []
+
+        # Add selections to ids_to_delete list
+        for record in x:
+            ids_to_delete.append(my_ap_tree.item(record, 'values')[0])
+
+        # Delete From Treeview
+        for record in x:
+            my_ap_tree.delete(record)
+
+        # Create a database or connect to one that exists
+        conn = sqlite3.connect('database.db')
+
+        # Create a cursor instance
+        c = conn.cursor()
+
+        # Delete Everything From The Table
+        c.executemany("DELETE FROM patients WHERE patient_id = ?", [(a,) for a in ids_to_delete])
+
+        # Reset List
+        ids_to_delete = []
+
+        # Commit changes
+        conn.commit()
+
+        # Close our connection
+        conn.close()
+
+        # Clear entry boxes if filled
+        clear_entries()
+
+
+# add new record to database
+def add_record():
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+    c.execute(
+        "SELECT COUNT(*) from patients WHERE email_address='" + email_entry.get() + "' OR tel_num='" + phone_entry.get() + "' ")
+    result = c.fetchone()
+    if fn_entry.get() == "" or ln_entry.get() == "" or phone_entry.get() == "" or email_entry.get() == "":
+        messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+    elif not (re.fullmatch(regexEmail, email_entry.get())):
+        messagebox.showwarning("Invalid Email", "Invalid Email Address")
+    elif not (re.fullmatch(regexName, fn_entry.get())) or not (re.fullmatch(regexName, ln_entry.get())):
+        messagebox.showwarning("Invalid Name", "Name cannot include special characters or numbers.")
+    elif int(result[0]) > 0:
+        messagebox.showwarning("Invalid", "This Patient Has Already Been Added")
+    else:
+        messagebox.showinfo("Success", "Patient Successfully Added!")
+        c.execute("INSERT INTO patients(first_name,last_name,tel_num,email_address)VALUES(?,?,?,?)",
+                  (fn_entry.get(), ln_entry.get(), phone_entry.get(), email_entry.get()))
+
+        # Commit changes
+        conn.commit()
+
+    # Close our connection
+    conn.close()
+
+    # Clear entry boxes
+    fn_entry.delete(0, END)
+    ln_entry.delete(0, END)
+    phone_entry.delete(0, END)
+    email_entry.delete(0, END)
+
+    # Clear The Treeview Table
+    my_ap_tree.delete(*my_ap_tree.get_children())
+
+    # Run to pull data from database on start
+    query_ap_database()
+
+
+def create_table_again():
+    # Create a database or connect to one that exists
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+
+    # Create Table
+    c.execute("""CREATE TABLE IF NOT EXISTS patients(patient_id integer PRIMARY KEY AUTOINCREMENT, first_name text 
+NOT NULL, last_name text NOT NULL, tel_num text NOT NULL, email_address text NOT NULL);""")
+
+    # Commit changes
+    conn.commit()
+
+    # Close our connection
+    conn.close()
+
+'''
+# Select Record
+def select_ap_record(e):
+    # Clear entry boxes
+    date_entry.delete(0, END)
+    time_entry.delete(0, END)
+    status_entry.delete(0, END)
+
+    # Grab record Number
+    selected = my_ap_tree.focus()
+    # Grab record values
+    values = my_ap_tree.item(selected, 'values')
+
+    # outputs to entry boxes
+
+    date_entry.insert(0, values[1])
+    time_entry.insert(0, values[2])
+    status_entry.insert(0, values[3])
+
+    print(values)
+
+
+# Add Buttons
+button_frame = LabelFrame(appointment_frame, text="Commands")
+button_frame.pack(fill="x", expand="yes", padx=20)
+
+#update_button = Button(button_frame, text="Update Record", command=update_record)
+#update_button.grid(row=0, column=1, padx=10, pady=10)
+
+#add_button = Button(button_frame, text="Add Record", command="add_record")
+#add_button.grid(row=0, column=0, padx=10, pady=10)
+
+remove_one_button = Button(button_frame, text="Remove One Selected", command=remove_one)
+remove_one_button.grid(row=0, column=3, padx=10, pady=10)
+
+#remove_many_button = Button(button_frame, text="Remove Many Selected", command="remove_many")
+#remove_many_button.grid(row=0, column=4, padx=10, pady=10)
+
+select_record_button = Button(button_frame, text="Generate PDF", command=generate_ap_pdf)
+select_record_button.grid(row=0, column=7, padx=10, pady=10)
+
+
+# Bind the treeview
+my_ap_tree.bind("<ButtonRelease-1>", select_ap_record)
+
+# Run to pull data from database on start
+query_ap_database()
+#----------------------------------------------------------------------------------------------------------
+masterwindow.mainloop()
