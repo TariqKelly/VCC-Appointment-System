@@ -76,7 +76,9 @@ def add_new_appointment():
         cursor.execute(
             "SELECT COUNT(*) from appointments WHERE appt_date='" + newApptDate + "' AND appt_time='" + newApptTime + "' ")
         result = cursor.fetchone()
-        if int(result[0]) > 0:
+        if newApptDate == "" or newApptTime == "" or patEmailAddress == "":
+            messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+        elif int(result[0]) > 0:
             messagebox.showwarning("Error","Error: Appointment Slot Occupied")
         else:
             messagebox.showinfo("Success","New Appointment Successfully Added")
@@ -209,9 +211,17 @@ def update_appointment():
             "SELECT COUNT(*) from patients WHERE email_address='" + input + "' ")
         result = cursor.fetchone()
         if int(result[0]) == 0:
-            messagebox.showwarning("Patient Not Found", "Appointment Not Found, Pl.")
+            messagebox.showwarning("Patient Not Found", "Patient Not Found. Please try again.")
             search_email.delete(0, END)
         else:
+            cursor.execute(
+                "SELECT COUNT(*) from appointments WHERE patient_id='" + str(getPatID()) + "' ")
+            result = cursor.fetchone()
+
+            if int(result[0]) == 0:
+                messagebox.showwarning("Appointment Not Found", "No Appointment is Scheduled for this patient.")
+                search_email.delete(0, END)
+
             sql = "SELECT * FROM appointments WHERE patient_id LIKE ?"
             res = cursor.execute(sql, (getPatID(),))
             i=0
@@ -288,9 +298,11 @@ def update_appointment():
                     cursor.execute(
                         "SELECT COUNT(*) from appointments WHERE appt_date='" + var1 + "' AND appt_time='" + var2 + "' ")
                     result = cursor.fetchone()
-                    if int(result[0]) > 0:
+                    if var1 == "" or var2 == "":
+                        messagebox.showwarning("Fields Empty", "Warning: No Fields Should Be Empty.")
+                    elif int(result[0]) > 0:
                         if appt_date1 == var1 and appt_time1 == var2:
-                            messagebox.showinfo("Updated", "Successfully Updated!!!")
+                            messagebox.showinfo("Updated", "Successfully Updated.")
                             cursor.execute(query, (var1, var2, var3, getAptID(),))
                         else:
                             messagebox.showwarning("Error","Error: Appointment Slot Occupied")
@@ -330,6 +342,7 @@ def delete_appointment():
     # Function To Perform Search
     def search_db():
         input = search_email.get()
+
         def getPatID():
             cursor.execute("SELECT patient_id from patients WHERE email_address='" + input + "'")
             patID = cursor.fetchone()[0]
@@ -342,6 +355,15 @@ def delete_appointment():
             messagebox.showwarning("Patient Not Found", "Patient Not Found. Please try again.")
             search_email.delete(0, END)
         else:
+            cursor.execute(
+                "SELECT COUNT(*) from appointments WHERE patient_id='" + str(getPatID()) + "' ")
+            result = cursor.fetchone()
+
+            if int(result[0]) == 0:
+                messagebox.showwarning("Appointment Not Found", "No Appointment is Scheduled for this patient.")
+                search_email.delete(0, END)
+                db.close()
+
             sql = "SELECT * FROM appointments WHERE patient_id LIKE ?"
             res = cursor.execute(sql, (getPatID(),))
             for row in res:
@@ -383,8 +405,11 @@ def delete_appointment():
                 # delete the appointment
                 sql2 = "DELETE FROM appointments WHERE appt_id = ?"
                 cursor.execute(sql2, (getAptID(),))
+                messagebox.showinfo("Success", "Deleted Successfully")
                 db.commit()
                 messagebox.showinfo("Success", "Deleted Successfully")
+            else:
+                db.close()
 
         # Delete Button
         delete = Button(master, text="Delete Appointment", width=18, height=2, command=delete_db)
