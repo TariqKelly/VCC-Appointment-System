@@ -1,12 +1,33 @@
 #import win10toast library to create desktop notifications
 from win10toast import ToastNotifier
+import datetime
+import sqlite3
 
-def notifyStaff(patientName, appointmentTime):
-    #set icon path for notification icon
-    ICON_PATH = "C:/Users/tariq/OneDrive/Documents/vcc_icon.ico"
+def notifyStaff():    
+
+    currentDateTime = datetime.datetime.now()
+    currentDate = currentDateTime.strftime("%x")
+    currentTime = currentDateTime.strftime("%I:%M %p")
+
+    conn = sqlite3.connect('database.db')
+
+    # Create a cursor instance
+    c = conn.cursor()
+
+    c.execute("SELECT appointments.appt_date, appointments.appt_time, patients.first_name, patients.last_name"
+              + " FROM appointments INNER JOIN patients ON appointments.patient_id=patients.patient_id")
+    records = c.fetchall()
+
+    for row in records:
+        data = [row[0], row[1], row[2], row[3]]
+        appointmentDate = row[0]
+        appointmentTime = row[1]
+        patientName = f"{row[2]} {row[3]}"
 
     #instatiate notification object
     n = ToastNotifier()
+    #m/d/yyyy H:MM 
 
     #generate and display notification with relevant patient's name and appointment time
-    n.show_toast("PATIENT ALERT", f"{patientName} will be arriving at {appointmentTime}", duration=25, icon_path=ICON_PATH)
+    if (appointmentDate == currentDate and appointmentTime == currentTime):
+        n.show_toast("PATIENT ALERT", f"{patientName} will be arriving at {appointmentTime}", duration=25)
