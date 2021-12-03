@@ -1,4 +1,7 @@
 # Vision Care Centre-Appointment System
+
+To start the system, run app.py
+
 # Group 3- Friday 1-3PM
 *De'Anna-Shanae Beadle-620140477
 Brittany Walker-620137189
